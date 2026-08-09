@@ -1,5 +1,33 @@
 # Backend Setup - Quick Start
 
+## Redis Docker Running 
+
+- To run Redis in a Docker container, use the following command:
+
+```bash
+docker run -d --name presently-redis -p 6379:6379 redis:latest
+```
+
+- To verify that Redis is running, you can use the following command:
+
+```bash
+docker ps
+```
+
+- Every time restart the docker computer:
+- restart the Redis container:
+
+```bash
+docker start presently-redis
+```
+
+- for stopping the Redis container, use:
+
+```bash
+docker stop presently-redis
+```
+
+
 ## Prerequisites
 
 - Node.js 16+
