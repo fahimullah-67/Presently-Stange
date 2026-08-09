@@ -1,14 +1,15 @@
-const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/auth');
-const {
+import express   from 'express';
+import { protect }   from '../middleware/auth.js';
+import {
   sendMessage,
   getMessages,
   updateMessage,
   deleteMessage,
   addReaction,
   pinMessage,
-} = require('../controllers/chatController');
+}   from '../controllers/chatController.js';
+
+const router = express.Router();
 
 // Private routes - all require authentication
 router.use(protect);
@@ -23,4 +24,4 @@ router.delete('/messages/:id', deleteMessage);
 router.post('/messages/:id/react', addReaction);
 router.put('/messages/:id/pin', pinMessage);
 
-module.exports = router;
+export default router;

@@ -1,27 +1,27 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Please provide a name'],
+      required: [true, "Please provide a name"],
       trim: true,
-      maxlength: [100, 'Name cannot exceed 100 characters'],
+      maxlength: [100, "Name cannot exceed 100 characters"],
     },
     email: {
       type: String,
-      required: [true, 'Please provide an email'],
+      required: [true, "Please provide an email"],
       unique: true,
       lowercase: true,
       match: [
         /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-        'Please provide a valid email',
+        "Please provide a valid email",
       ],
     },
     password: {
       type: String,
-      required: [true, 'Please provide a password'],
+      required: [true, "Please provide a password"],
       minlength: 6,
       select: false,
     },
@@ -31,13 +31,13 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'admin', 'organizer'],
-      default: 'user',
+      enum: ["user", "admin", "organizer"],
+      default: "user",
     },
     status: {
       type: String,
-      enum: ['active', 'inactive', 'banned'],
-      default: 'active',
+      enum: ["active", "inactive", "banned"],
+      default: "active",
     },
     isEmailVerified: {
       type: Boolean,
@@ -51,7 +51,7 @@ const userSchema = new mongoose.Schema(
     preferences: {
       notifications: { type: Boolean, default: true },
       darkMode: { type: Boolean, default: false },
-      language: { type: String, default: 'en' },
+      language: { type: String, default: "en" },
     },
     metadata: {
       totalSessions: { type: Number, default: 0 },
@@ -59,12 +59,12 @@ const userSchema = new mongoose.Schema(
       totalAttendance: { type: Number, default: 0 },
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
 
   try {
     const salt = await bcrypt.genSalt(10);
@@ -90,4 +90,6 @@ userSchema.methods.toJSON = function () {
   return userObject;
 };
 
-module.exports = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
+
+export default User;

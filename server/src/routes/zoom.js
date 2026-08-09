@@ -1,30 +1,38 @@
-const express = require('express');
+import express from "express";
 const router = express.Router();
-const { protect } = require('../middleware/auth');
-const zoomController = require('../controllers/zoomController');
+import { protect } from "../middleware/auth.js";
+import zoomController from "../controllers/zoomController.js";
 
 // Create Zoom meeting
-router.post('/create-meeting', protect, zoomController.createMeeting);
+router.post("/create-meeting", protect, zoomController.createMeeting);
 
 // Get SDK token
-router.post('/get-token', protect, zoomController.getSDKToken);
+router.post("/get-token", protect, zoomController.getSDKToken);
 
 // Get user's meetings
-router.get('/my-meetings', protect, zoomController.getUserMeetings);
+router.get("/my-meetings", protect, zoomController.getUserMeetings);
 
 // Get meeting info
-router.get('/meeting/:meetingId', protect, zoomController.getMeetingInfo);
+router.get("/meeting/:meetingId", protect, zoomController.getMeetingInfo);
 
 // Get participants
-router.get('/meeting/:meetingId/participants', protect, zoomController.getMeetingParticipants);
+router.get(
+  "/meeting/:meetingId/participants",
+  protect,
+  zoomController.getMeetingParticipants,
+);
 
 // Get recordings
-router.get('/meeting/:meetingId/recordings', protect, zoomController.getRecordings);
+router.get(
+  "/meeting/:meetingId/recordings",
+  protect,
+  zoomController.getRecordings,
+);
 
 // End meeting
-router.post('/meeting/:meetingId/end', protect, zoomController.endMeeting);
+router.post("/meeting/:meetingId/end", protect, zoomController.endMeeting);
 
 // Delete meeting
-router.delete('/meeting/:meetingId', protect, zoomController.deleteMeeting);
+router.delete("/meeting/:meetingId", protect, zoomController.deleteMeeting);
 
-module.exports = router;
+export default router;

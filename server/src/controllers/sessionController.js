@@ -1,11 +1,11 @@
-const Session = require('../models/Session');
-const Attendee = require('../models/Attendee');
-const { cacheSet, cacheGet, cacheDelete } = require('../config/redis');
+import Session from "../models/Session.js";
+import Attendee from "../models/Attendee.js";
+import { cacheSet, cacheGet, cacheDelete } from "../config/redis.js";
 
 // @desc Create session
 // @route POST /api/sessions
 // @access Private
-exports.createSession = async (req, res, next) => {
+export const createSession = async (req, res, next) => {
   try {
     const { title, description, startTime, maxAttendees, settings } = req.body;
 
@@ -23,14 +23,14 @@ exports.createSession = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Session created successfully',
+      message: "Session created successfully",
       session,
     });
   } catch (error) {
-    console.error('[v0] Create Session Error:', error.message);
+    console.error("[v0] Create Session Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to create session',
+      message: "Failed to create session",
       error: error.message,
     });
   }
@@ -39,21 +39,21 @@ exports.createSession = async (req, res, next) => {
 // @desc Get all sessions
 // @route GET /api/sessions
 // @access Private
-exports.getSessions = async (req, res, next) => {
+export const getSessions = async (req, res, next) => {
   try {
     const sessions = await Session.find({ organizerId: req.user._id })
       .sort({ createdAt: -1 })
-      .populate('organizerId', 'name email');
+      .populate("organizerId", "name email");
 
     res.status(200).json({
       success: true,
       sessions,
     });
   } catch (error) {
-    console.error('[v0] Get Sessions Error:', error.message);
+    console.error("[v0] Get Sessions Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch sessions',
+      message: "Failed to fetch sessions",
       error: error.message,
     });
   }
@@ -62,7 +62,7 @@ exports.getSessions = async (req, res, next) => {
 // @desc Get single session
 // @route GET /api/sessions/:id
 // @access Private
-exports.getSession = async (req, res, next) => {
+export const getSession = async (req, res, next) => {
   try {
     const sessionId = req.params.id;
 
@@ -71,14 +71,14 @@ exports.getSession = async (req, res, next) => {
 
     if (!session) {
       session = await Session.findById(sessionId)
-        .populate('organizerId', 'name email')
-        .populate('attendees.userId', 'name email avatar')
-        .populate('polls');
+        .populate("organizerId", "name email")
+        .populate("attendees.userId", "name email avatar")
+        .populate("polls");
 
       if (!session) {
         return res.status(404).json({
           success: false,
-          message: 'Session not found',
+          message: "Session not found",
         });
       }
 
@@ -91,10 +91,10 @@ exports.getSession = async (req, res, next) => {
       session,
     });
   } catch (error) {
-    console.error('[v0] Get Session Error:', error.message);
+    console.error("[v0] Get Session Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch session',
+      message: "Failed to fetch session",
       error: error.message,
     });
   }
@@ -103,25 +103,25 @@ exports.getSession = async (req, res, next) => {
 // @desc Start session
 // @route PUT /api/sessions/:id/start
 // @access Private
-exports.startSession = async (req, res, next) => {
+export const startSession = async (req, res, next) => {
   try {
     const session = await Session.findById(req.params.id);
 
     if (!session) {
       return res.status(404).json({
         success: false,
-        message: 'Session not found',
+        message: "Session not found",
       });
     }
 
     if (session.organizerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to start this session',
+        message: "Not authorized to start this session",
       });
     }
 
-    session.status = 'live';
+    session.status = "live";
     session.actualStartTime = new Date();
     await session.save();
 
@@ -130,14 +130,14 @@ exports.startSession = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Session started successfully',
+      message: "Session started successfully",
       session,
     });
   } catch (error) {
-    console.error('[v0] Start Session Error:', error.message);
+    console.error("[v0] Start Session Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to start session',
+      message: "Failed to start session",
       error: error.message,
     });
   }
@@ -146,25 +146,25 @@ exports.startSession = async (req, res, next) => {
 // @desc End session
 // @route PUT /api/sessions/:id/end
 // @access Private
-exports.endSession = async (req, res, next) => {
+export const endSession = async (req, res, next) => {
   try {
     const session = await Session.findById(req.params.id);
 
     if (!session) {
       return res.status(404).json({
         success: false,
-        message: 'Session not found',
+        message: "Session not found",
       });
     }
 
     if (session.organizerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to end this session',
+        message: "Not authorized to end this session",
       });
     }
 
-    session.status = 'completed';
+    session.status = "completed";
     session.actualEndTime = new Date();
     await session.save();
 
@@ -173,14 +173,14 @@ exports.endSession = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Session ended successfully',
+      message: "Session ended successfully",
       session,
     });
   } catch (error) {
-    console.error('[v0] End Session Error:', error.message);
+    console.error("[v0] End Session Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to end session',
+      message: "Failed to end session",
       error: error.message,
     });
   }
@@ -189,7 +189,7 @@ exports.endSession = async (req, res, next) => {
 // @desc Add attendee to session
 // @route POST /api/sessions/:id/attendees
 // @access Private
-exports.addAttendee = async (req, res, next) => {
+export const addAttendee = async (req, res, next) => {
   try {
     const { name, email, role } = req.body;
     const session = await Session.findById(req.params.id);
@@ -197,7 +197,7 @@ exports.addAttendee = async (req, res, next) => {
     if (!session) {
       return res.status(404).json({
         success: false,
-        message: 'Session not found',
+        message: "Session not found",
       });
     }
 
@@ -207,10 +207,10 @@ exports.addAttendee = async (req, res, next) => {
       userId: req.user._id,
       name: name || req.user.name,
       email: email || req.user.email,
-      role: role || 'attendee',
+      role: role || "attendee",
       joinTime: new Date(),
       isActive: true,
-      status: 'joined',
+      status: "joined",
     });
 
     // Add to session
@@ -225,14 +225,14 @@ exports.addAttendee = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Attendee added successfully',
+      message: "Attendee added successfully",
       attendee,
     });
   } catch (error) {
-    console.error('[v0] Add Attendee Error:', error.message);
+    console.error("[v0] Add Attendee Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to add attendee',
+      message: "Failed to add attendee",
       error: error.message,
     });
   }
@@ -241,14 +241,14 @@ exports.addAttendee = async (req, res, next) => {
 // @desc Get session analytics
 // @route GET /api/sessions/:id/analytics
 // @access Private
-exports.getSessionAnalytics = async (req, res, next) => {
+export const getSessionAnalytics = async (req, res, next) => {
   try {
     const session = await Session.findById(req.params.id);
 
     if (!session) {
       return res.status(404).json({
         success: false,
-        message: 'Session not found',
+        message: "Session not found",
       });
     }
 
@@ -275,10 +275,10 @@ exports.getSessionAnalytics = async (req, res, next) => {
       analytics,
     });
   } catch (error) {
-    console.error('[v0] Get Analytics Error:', error.message);
+    console.error("[v0] Get Analytics Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch analytics',
+      message: "Failed to fetch analytics",
       error: error.message,
     });
   }

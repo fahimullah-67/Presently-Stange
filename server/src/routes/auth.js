@@ -1,7 +1,5 @@
-const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/auth');
-const {
+import express from "express";
+import {
   register,
   login,
   logout,
@@ -10,20 +8,23 @@ const {
   sendOTP,
   verifyOTP,
   getZoomSignature,
-} = require('../controllers/authController');
+} from "../controllers/authController.js";
+import { protect } from "../middleware/auth.js";
+
+const router = express.Router();
 
 // Public routes
-router.post('/register', register);
-router.post('/login', login);
+router.post("/register", register);
+router.post("/login", login);
 
 // Gmail OTP authentication
-router.post('/send-otp', sendOTP);
-router.post('/verify-otp', verifyOTP);
+router.post("/send-otp", sendOTP);
+router.post("/verify-otp", verifyOTP);
 
 // Private routes
-router.post('/logout', protect, logout);
-router.get('/me', protect, getCurrentUser);
-router.put('/profile', protect, updateProfile);
-router.post('/zoom-signature', protect, getZoomSignature);
+router.post("/logout", protect, logout);
+router.get("/me", protect, getCurrentUser);
+router.put("/profile", protect, updateProfile);
+router.post("/zoom-signature", protect, getZoomSignature);
 
-module.exports = router;
+export default router;

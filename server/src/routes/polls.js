@@ -1,14 +1,16 @@
-const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/auth');
-const {
+import express   from 'express';
+import { protect }   from '../middleware/auth.js';
+import {
   createPoll,
   getSessionPolls,
   getPoll,
   respondToPoll,
   endPoll,
   deletePoll,
-} = require('../controllers/pollController');
+}   from '../controllers/pollController.js';
+
+const router = express.Router();
+
 
 // Private routes - all require authentication
 router.use(protect);
@@ -25,4 +27,4 @@ router.post('/:id/respond', respondToPoll);
 // Get session polls
 router.get('/session/:sessionId', getSessionPolls);
 
-module.exports = router;
+export default router;

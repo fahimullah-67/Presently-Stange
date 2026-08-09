@@ -1,16 +1,16 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const attendeeSchema = new mongoose.Schema(
   {
     sessionId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Session',
+      ref: "Session",
       required: true,
       index: true,
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
     name: {
       type: String,
@@ -19,13 +19,13 @@ const attendeeSchema = new mongoose.Schema(
     email: String,
     status: {
       type: String,
-      enum: ['invited', 'registered', 'joined', 'left', 'no-show'],
-      default: 'registered',
+      enum: ["invited", "registered", "joined", "left", "no-show"],
+      default: "registered",
     },
     role: {
       type: String,
-      enum: ['organizer', 'speaker', 'attendee'],
-      default: 'attendee',
+      enum: ["organizer", "speaker", "attendee"],
+      default: "attendee",
     },
     joinTime: Date,
     leaveTime: Date,
@@ -64,11 +64,11 @@ const attendeeSchema = new mongoose.Schema(
       submittedAt: Date,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Calculate attendance duration
-attendeeSchema.pre('save', function (next) {
+attendeeSchema.pre("save", function (next) {
   if (this.joinTime && this.leaveTime) {
     this.duration = Math.floor((this.leaveTime - this.joinTime) / 1000);
   }
@@ -84,38 +84,40 @@ attendeeSchema.statics.getActiveAttendees = async function (sessionId) {
   return await this.find({
     sessionId,
     isActive: true,
-    status: 'joined',
-  }).populate('userId', 'name email avatar');
+    status: "joined",
+  }).populate("userId", "name email avatar");
 };
 
 // Instance method to update engagement
 attendeeSchema.methods.updateEngagement = function (type) {
   switch (type) {
-    case 'poll':
+    case "poll":
       this.engagement.pollsAnswered += 1;
       break;
-    case 'message':
+    case "message":
       this.engagement.messagesCount += 1;
       break;
-    case 'reaction':
+    case "reaction":
       this.engagement.reactionsCount += 1;
       break;
-    case 'question':
+    case "question":
       this.engagement.questionsAsked += 1;
       break;
   }
-  
+
   // Calculate engagement score (0-100)
   const baseScore = Math.min(
     (this.engagement.pollsAnswered * 10 +
       this.engagement.messagesCount * 5 +
       this.engagement.reactionsCount * 2 +
-      this.engagement.questionsAsked * 15) / 10,
-    100
+      this.engagement.questionsAsked * 15) /
+      10,
+    100,
   );
   this.engagement.engagementScore = Math.round(baseScore);
-  
+
   return this.save();
 };
 
-module.exports = mongoose.model('Attendee', attendeeSchema);
+const Attendee = mongoose.model("Attendee", attendeeSchema);
+export default Attendee;

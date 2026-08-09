@@ -1,21 +1,29 @@
-const Poll = require('../models/Poll');
-const Session = require('../models/Session');
-const Attendee = require('../models/Attendee');
-const mongoose = require('mongoose');
+import Poll from "../models/Poll.js";
+import Session from "../models/Session.js";
+import Attendee from "../models/Attendee.js";
+import mongoose from "mongoose";
 
 // @desc Create poll
 // @route POST /api/polls
 // @access Private
-exports.createPoll = async (req, res, next) => {
+export const createPoll = async (req, res, next) => {
   try {
-    const { sessionId, question, description, type, options, isAnonymous, showLiveResults } = req.body;
+    const {
+      sessionId,
+      question,
+      description,
+      type,
+      options,
+      isAnonymous,
+      showLiveResults,
+    } = req.body;
 
     // Validate session exists
     const session = await Session.findById(sessionId);
     if (!session) {
       return res.status(404).json({
         success: false,
-        message: 'Session not found',
+        message: "Session not found",
       });
     }
 
@@ -44,14 +52,14 @@ exports.createPoll = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Poll created successfully',
+      message: "Poll created successfully",
       poll,
     });
   } catch (error) {
-    console.error('[v0] Create Poll Error:', error.message);
+    console.error("[v0] Create Poll Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to create poll',
+      message: "Failed to create poll",
       error: error.message,
     });
   }
@@ -60,12 +68,12 @@ exports.createPoll = async (req, res, next) => {
 // @desc Get polls for session
 // @route GET /api/sessions/:sessionId/polls
 // @access Private
-exports.getSessionPolls = async (req, res, next) => {
+export const getSessionPolls = async (req, res, next) => {
   try {
     const { sessionId } = req.params;
 
     const polls = await Poll.find({ sessionId })
-      .populate('createdBy', 'name email')
+      .populate("createdBy", "name email")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -73,10 +81,10 @@ exports.getSessionPolls = async (req, res, next) => {
       polls,
     });
   } catch (error) {
-    console.error('[v0] Get Session Polls Error:', error.message);
+    console.error("[v0] Get Session Polls Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch polls',
+      message: "Failed to fetch polls",
       error: error.message,
     });
   }
@@ -85,14 +93,17 @@ exports.getSessionPolls = async (req, res, next) => {
 // @desc Get single poll with results
 // @route GET /api/polls/:id
 // @access Private
-exports.getPoll = async (req, res, next) => {
+export const getPoll = async (req, res, next) => {
   try {
-    const poll = await Poll.findById(req.params.id).populate('createdBy', 'name email');
+    const poll = await Poll.findById(req.params.id).populate(
+      "createdBy",
+      "name email",
+    );
 
     if (!poll) {
       return res.status(404).json({
         success: false,
-        message: 'Poll not found',
+        message: "Poll not found",
       });
     }
 
@@ -104,10 +115,10 @@ exports.getPoll = async (req, res, next) => {
       results,
     });
   } catch (error) {
-    console.error('[v0] Get Poll Error:', error.message);
+    console.error("[v0] Get Poll Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch poll',
+      message: "Failed to fetch poll",
       error: error.message,
     });
   }
@@ -116,7 +127,7 @@ exports.getPoll = async (req, res, next) => {
 // @desc Add response to poll
 // @route POST /api/polls/:id/respond
 // @access Private
-exports.respondToPoll = async (req, res, next) => {
+export const respondToPoll = async (req, res, next) => {
   try {
     const { selectedOption, textResponse } = req.body;
     const poll = await Poll.findById(req.params.id);
@@ -124,20 +135,20 @@ exports.respondToPoll = async (req, res, next) => {
     if (!poll) {
       return res.status(404).json({
         success: false,
-        message: 'Poll not found',
+        message: "Poll not found",
       });
     }
 
     // Check if already responded (if multiple votes not allowed)
     if (!poll.allowMultipleVotes) {
       const hasResponded = poll.responses.some(
-        (r) => r.respondentId?.toString() === req.user._id.toString()
+        (r) => r.respondentId?.toString() === req.user._id.toString(),
       );
 
       if (hasResponded) {
         return res.status(400).json({
           success: false,
-          message: 'You have already responded to this poll',
+          message: "You have already responded to this poll",
         });
       }
     }
@@ -145,7 +156,7 @@ exports.respondToPoll = async (req, res, next) => {
     // Add response
     poll.responses.push({
       respondentId: req.user._id,
-      respondentName: poll.isAnonymous ? 'Anonymous' : req.user.name,
+      respondentName: poll.isAnonymous ? "Anonymous" : req.user.name,
       selectedOption,
       textResponse,
       timestamp: new Date(),
@@ -153,7 +164,9 @@ exports.respondToPoll = async (req, res, next) => {
 
     // Update vote count
     if (selectedOption) {
-      const option = poll.options.find((o) => o._id.toString() === selectedOption.toString());
+      const option = poll.options.find(
+        (o) => o._id.toString() === selectedOption.toString(),
+      );
       if (option) {
         option.votes += 1;
       }
@@ -168,19 +181,19 @@ exports.respondToPoll = async (req, res, next) => {
     });
 
     if (attendee) {
-      await attendee.updateEngagement('poll');
+      await attendee.updateEngagement("poll");
     }
 
     res.status(201).json({
       success: true,
-      message: 'Response recorded successfully',
+      message: "Response recorded successfully",
       poll,
     });
   } catch (error) {
-    console.error('[v0] Respond to Poll Error:', error.message);
+    console.error("[v0] Respond to Poll Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to record response',
+      message: "Failed to record response",
       error: error.message,
     });
   }
@@ -189,21 +202,21 @@ exports.respondToPoll = async (req, res, next) => {
 // @desc End poll
 // @route PUT /api/polls/:id/end
 // @access Private
-exports.endPoll = async (req, res, next) => {
+export const endPoll = async (req, res, next) => {
   try {
     const poll = await Poll.findById(req.params.id);
 
     if (!poll) {
       return res.status(404).json({
         success: false,
-        message: 'Poll not found',
+        message: "Poll not found",
       });
     }
 
     if (poll.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to end this poll',
+        message: "Not authorized to end this poll",
       });
     }
 
@@ -211,10 +224,14 @@ exports.endPoll = async (req, res, next) => {
     poll.endTime = new Date();
 
     // Calculate analytics
-    if (poll.type === 'rating') {
-      const ratings = poll.responses.filter((r) => r.selectedOption).map((r) => parseInt(r.selectedOption));
+    if (poll.type === "rating") {
+      const ratings = poll.responses
+        .filter((r) => r.selectedOption)
+        .map((r) => parseInt(r.selectedOption));
       if (ratings.length > 0) {
-        poll.analytics.averageRating = (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(2);
+        poll.analytics.averageRating = (
+          ratings.reduce((a, b) => a + b, 0) / ratings.length
+        ).toFixed(2);
       }
     }
 
@@ -227,14 +244,14 @@ exports.endPoll = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Poll ended successfully',
+      message: "Poll ended successfully",
       poll,
     });
   } catch (error) {
-    console.error('[v0] End Poll Error:', error.message);
+    console.error("[v0] End Poll Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to end poll',
+      message: "Failed to end poll",
       error: error.message,
     });
   }
@@ -243,21 +260,21 @@ exports.endPoll = async (req, res, next) => {
 // @desc Delete poll
 // @route DELETE /api/polls/:id
 // @access Private
-exports.deletePoll = async (req, res, next) => {
+export const deletePoll = async (req, res, next) => {
   try {
     const poll = await Poll.findById(req.params.id);
 
     if (!poll) {
       return res.status(404).json({
         success: false,
-        message: 'Poll not found',
+        message: "Poll not found",
       });
     }
 
     if (poll.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to delete this poll',
+        message: "Not authorized to delete this poll",
       });
     }
 
@@ -270,13 +287,13 @@ exports.deletePoll = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Poll deleted successfully',
+      message: "Poll deleted successfully",
     });
   } catch (error) {
-    console.error('[v0] Delete Poll Error:', error.message);
+    console.error("[v0] Delete Poll Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete poll',
+      message: "Failed to delete poll",
       error: error.message,
     });
   }

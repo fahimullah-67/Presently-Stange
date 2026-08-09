@@ -1,112 +1,140 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const compression = require('compression');
-const http = require('http');
+// Environment & Dependencies
 
-// Database and Redis
-const { connectDB, disconnectDB } = require('./config/database');
-const { initRedis, closeRedis } = require('./config/redis');
+import "dotenv/config";
+
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import compression from "compression";
+import http from "http";
+
+// Database & Redis
+
+import { connectDB, disconnectDB } from "./config/database.js";
+
+import { initRedis, closeRedis } from "./config/redis.js";
 
 // Socket.io
-const { initSocket } = require('./config/socket');
+
+import { initSocket } from "./config/socket.js";
 
 // Middleware
-const { errorHandler } = require('./middleware/errorHandler');
+
+import { errorHandler } from "./middleware/errorHandler.js";
 
 // Routes
-const authRoutes = require('./routes/auth');
-const sessionRoutes = require('./routes/sessions');
-const pollRoutes = require('./routes/polls');
-const chatRoutes = require('./routes/chat');
-const zoomRoutes = require('./routes/zoom');
 
-// Initialize Express app
+import authRoutes from "./routes/auth.js";
+import sessionRoutes from "./routes/sessions.js";
+import pollRoutes from "./routes/polls.js";
+import chatRoutes from "./routes/chat.js";
+import zoomRoutes from "./routes/zoom.js";
+
+// App Initialization
+
 const app = express();
 
 // Security Middleware
+
 app.use(helmet());
-
-// Body Parser
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
-// Compression
-app.use(compression());
-
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
+
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
 );
 
+// Request Processing
+
+app.use(express.json({ limit: "10mb" }));
+
+app.use(
+  express.urlencoded({
+    limit: "10mb",
+    extended: true,
+  }),
+);
+
+app.use(compression());
+
 // Logging
-app.use(morgan('dev'));
+
+app.use(morgan("dev"));
 
 // Health Check
-app.get('/health', (req, res) => {
+
+app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Server is running',
+    message: "Server is running",
     timestamp: new Date(),
   });
 });
 
 // API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/sessions', sessionRoutes);
-app.use('/api/polls', pollRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/zoom', zoomRoutes);
 
-// Root endpoint
-app.get('/api', (req, res) => {
+app.use("/api/auth", authRoutes);
+app.use("/api/sessions", sessionRoutes);
+app.use("/api/polls", pollRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/zoom", zoomRoutes);
+
+// API Information
+
+app.get("/api", (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Presently API v1.0',
+    message: "Presently API v1.0",
+
     endpoints: {
-      auth: '/api/auth',
-      sessions: '/api/sessions',
-      polls: '/api/polls',
-      chat: '/api/chat',
-      zoom: '/api/zoom',
+      auth: "/api/auth",
+      sessions: "/api/sessions",
+      polls: "/api/polls",
+      chat: "/api/chat",
+      zoom: "/api/zoom",
     },
   });
 });
 
 // 404 Handler
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found',
+    message: "Route not found",
     path: req.path,
   });
 });
 
 // Global Error Handler
+
 app.use(errorHandler);
 
-// Create HTTP server for Socket.io
+// HTTP & Socket.io Server
+
 const server = http.createServer(app);
 
-// Initialize Socket.io
 const io = initSocket(server);
 
-// Start Server
+// Server Configuration
+
 const PORT = process.env.PORT || 5000;
+
+// Start Server
 
 const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
 
-    // Initialize Redis
+    // Connect to Redis
     await initRedis();
 
     // Start HTTP server
@@ -114,60 +142,84 @@ const startServer = async () => {
       console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
-║          🚀 Presently Backend Server Started 🚀           ║
+║              🚀 PRESENTLY BACKEND STARTED 🚀              ║
 ║                                                            ║
-║  Environment: ${process.env.NODE_ENV || 'development'}
-║  Port: ${PORT}
-║  API: http://localhost:${PORT}/api
-║  Health: http://localhost:${PORT}/health
+║  Environment : ${process.env.NODE_ENV || "development"}
+║  Port        : ${PORT}
+║  API         : http://localhost:${PORT}/api
+║  Health      : http://localhost:${PORT}/health
 ║                                                            ║
-║  Socket.io enabled for real-time features                  ║
-║  Redis connected for caching                               ║
-║  MongoDB connected for persistence                         ║
+║  Socket.io   : Enabled                                     ║
+║  Redis       : Connected                                   ║
+║  MongoDB     : Connected                                   ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
       `);
     });
   } catch (error) {
-    console.error('Server Startup Error:', error.message);
+    console.error("❌ Server Startup Error:", error.message);
+
     process.exit(1);
   }
 };
 
 // Graceful Shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM signal received: closing HTTP server');
+
+const shutdown = async (signal) => {
+  console.log(`\n${signal} signal received: shutting down gracefully...`);
 
   server.close(async () => {
-    console.log('HTTP server closed');
+    console.log("HTTP server closed");
 
-    await disconnectDB();
-    await closeRedis();
+    try {
+      // Close MongoDB connection
+      await disconnectDB();
 
-    process.exit(0);
+      // Close Redis connection
+      await closeRedis();
+
+      console.log("Database connections closed");
+      console.log("👋 Server shutdown complete");
+
+      process.exit(0);
+    } catch (error) {
+      console.error("❌ Shutdown Error:", error.message);
+
+      process.exit(1);
+    }
   });
+};
+
+// Process Signals
+
+// SIGTERM
+process.on("SIGTERM", () => {
+  shutdown("SIGTERM");
 });
 
-process.on('SIGINT', async () => {
-  console.log('SIGINT signal received: closing HTTP server');
-
-  server.close(async () => {
-    console.log('HTTP server closed');
-
-    await disconnectDB();
-    await closeRedis();
-
-    process.exit(0);
-  });
+// SIGINT / Ctrl + C
+process.on("SIGINT", () => {
+  shutdown("SIGINT");
 });
 
-// Unhandled Promise Rejection
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err.message);
-  process.exit(1);
+// Process-Level Error Handling
+
+process.on("unhandledRejection", (error) => {
+  console.error("❌ Unhandled Promise Rejection:", error);
+
+  shutdown("Unhandled Rejection");
 });
 
-// Start server
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught Exception:", error);
+
+  shutdown("Uncaught Exception");
+});
+
+// Start Application
+
 startServer();
 
-module.exports = { app, server, io };
+// Exports
+
+export { app, server, io };

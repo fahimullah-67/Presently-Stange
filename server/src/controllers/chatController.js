@@ -1,11 +1,11 @@
-const ChatMessage = require('../models/ChatMessage');
-const Session = require('../models/Session');
-const Attendee = require('../models/Attendee');
+import ChatMessage from "../models/ChatMessage.js";
+import Session from "../models/Session.js";
+import Attendee from "../models/Attendee.js";
 
 // @desc Send message
 // @route POST /api/sessions/:sessionId/messages
 // @access Private
-exports.sendMessage = async (req, res, next) => {
+export const sendMessage = async (req, res, next) => {
   try {
     const { sessionId } = req.params;
     const { message, messageType, attachments, mentions } = req.body;
@@ -15,7 +15,7 @@ exports.sendMessage = async (req, res, next) => {
     if (!session) {
       return res.status(404).json({
         success: false,
-        message: 'Session not found',
+        message: "Session not found",
       });
     }
 
@@ -25,17 +25,18 @@ exports.sendMessage = async (req, res, next) => {
       senderName: req.user.name,
       senderInitials: req.user.name.substring(0, 2).toUpperCase(),
       message,
-      messageType: messageType || 'text',
+      messageType: messageType || "text",
       attachments: attachments || [],
       mentions: mentions || [],
       metadata: {
         ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
+        userAgent: req.get("user-agent"),
       },
     });
 
     // Update session message count
-    session.analytics.totalMessages = (session.analytics.totalMessages || 0) + 1;
+    session.analytics.totalMessages =
+      (session.analytics.totalMessages || 0) + 1;
     await session.save();
 
     // Update attendee engagement
@@ -45,22 +46,22 @@ exports.sendMessage = async (req, res, next) => {
     });
 
     if (attendee) {
-      await attendee.updateEngagement('message');
+      await attendee.updateEngagement("message");
     }
 
     // Populate sender info
-    await chatMessage.populate('senderId', 'name email avatar');
+    await chatMessage.populate("senderId", "name email avatar");
 
     res.status(201).json({
       success: true,
-      message: 'Message sent successfully',
+      message: "Message sent successfully",
       data: chatMessage,
     });
   } catch (error) {
-    console.error('[v0] Send Message Error:', error.message);
+    console.error("[v0] Send Message Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to send message',
+      message: "Failed to send message",
       error: error.message,
     });
   }
@@ -69,7 +70,7 @@ exports.sendMessage = async (req, res, next) => {
 // @desc Get session messages
 // @route GET /api/sessions/:sessionId/messages
 // @access Private
-exports.getMessages = async (req, res, next) => {
+export const getMessages = async (req, res, next) => {
   try {
     const { sessionId } = req.params;
     const { limit = 50, skip = 0 } = req.query;
@@ -78,8 +79,8 @@ exports.getMessages = async (req, res, next) => {
       sessionId,
       isDeleted: false,
     })
-      .populate('senderId', 'name email avatar')
-      .populate('mentions', 'name email')
+      .populate("senderId", "name email avatar")
+      .populate("mentions", "name email")
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .skip(parseInt(skip));
@@ -99,10 +100,10 @@ exports.getMessages = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error('[v0] Get Messages Error:', error.message);
+    console.error("[v0] Get Messages Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch messages',
+      message: "Failed to fetch messages",
       error: error.message,
     });
   }
@@ -111,7 +112,7 @@ exports.getMessages = async (req, res, next) => {
 // @desc Update message
 // @route PUT /api/messages/:id
 // @access Private
-exports.updateMessage = async (req, res, next) => {
+export const updateMessage = async (req, res, next) => {
   try {
     const { message } = req.body;
 
@@ -120,14 +121,14 @@ exports.updateMessage = async (req, res, next) => {
     if (!chatMessage) {
       return res.status(404).json({
         success: false,
-        message: 'Message not found',
+        message: "Message not found",
       });
     }
 
     if (chatMessage.senderId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to update this message',
+        message: "Not authorized to update this message",
       });
     }
 
@@ -138,14 +139,14 @@ exports.updateMessage = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Message updated successfully',
+      message: "Message updated successfully",
       data: chatMessage,
     });
   } catch (error) {
-    console.error('[v0] Update Message Error:', error.message);
+    console.error("[v0] Update Message Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to update message',
+      message: "Failed to update message",
       error: error.message,
     });
   }
@@ -154,21 +155,21 @@ exports.updateMessage = async (req, res, next) => {
 // @desc Delete message
 // @route DELETE /api/messages/:id
 // @access Private
-exports.deleteMessage = async (req, res, next) => {
+export const deleteMessage = async (req, res, next) => {
   try {
     const chatMessage = await ChatMessage.findById(req.params.id);
 
     if (!chatMessage) {
       return res.status(404).json({
         success: false,
-        message: 'Message not found',
+        message: "Message not found",
       });
     }
 
     if (chatMessage.senderId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to delete this message',
+        message: "Not authorized to delete this message",
       });
     }
 
@@ -178,13 +179,13 @@ exports.deleteMessage = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Message deleted successfully',
+      message: "Message deleted successfully",
     });
   } catch (error) {
-    console.error('[v0] Delete Message Error:', error.message);
+    console.error("[v0] Delete Message Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete message',
+      message: "Failed to delete message",
       error: error.message,
     });
   }
@@ -193,7 +194,7 @@ exports.deleteMessage = async (req, res, next) => {
 // @desc Add reaction to message
 // @route POST /api/messages/:id/react
 // @access Private
-exports.addReaction = async (req, res, next) => {
+export const addReaction = async (req, res, next) => {
   try {
     const { emoji } = req.body;
 
@@ -202,7 +203,7 @@ exports.addReaction = async (req, res, next) => {
     if (!chatMessage) {
       return res.status(404).json({
         success: false,
-        message: 'Message not found',
+        message: "Message not found",
       });
     }
 
@@ -215,19 +216,19 @@ exports.addReaction = async (req, res, next) => {
     });
 
     if (attendee) {
-      await attendee.updateEngagement('reaction');
+      await attendee.updateEngagement("reaction");
     }
 
     res.status(200).json({
       success: true,
-      message: 'Reaction added successfully',
+      message: "Reaction added successfully",
       data: chatMessage,
     });
   } catch (error) {
-    console.error('[v0] Add Reaction Error:', error.message);
+    console.error("[v0] Add Reaction Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to add reaction',
+      message: "Failed to add reaction",
       error: error.message,
     });
   }
@@ -236,14 +237,14 @@ exports.addReaction = async (req, res, next) => {
 // @desc Pin message
 // @route PUT /api/messages/:id/pin
 // @access Private
-exports.pinMessage = async (req, res, next) => {
+export const pinMessage = async (req, res, next) => {
   try {
     const chatMessage = await ChatMessage.findById(req.params.id);
 
     if (!chatMessage) {
       return res.status(404).json({
         success: false,
-        message: 'Message not found',
+        message: "Message not found",
       });
     }
 
@@ -252,14 +253,14 @@ exports.pinMessage = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Message pinned/unpinned successfully',
+      message: "Message pinned/unpinned successfully",
       data: chatMessage,
     });
   } catch (error) {
-    console.error('[v0] Pin Message Error:', error.message);
+    console.error("[v0] Pin Message Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to pin message',
+      message: "Failed to pin message",
       error: error.message,
     });
   }

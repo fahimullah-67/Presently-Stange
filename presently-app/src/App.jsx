@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Welcome from "./pages/Welcome";
-import Auth from "./pages/Auth";
+import Auth from "./pages/auth.js";
 import GmailLogin from "./pages/GmailLogin";
 import Dashboard from "./pages/Dashboard";
 import Polls from "./pages/Polls";

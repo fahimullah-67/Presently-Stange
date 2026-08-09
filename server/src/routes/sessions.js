@@ -1,7 +1,7 @@
-const express = require('express');
+import express from "express";
 const router = express.Router();
-const { protect } = require('../middleware/auth');
-const {
+import { protect } from "../middleware/auth.js";
+import {
   createSession,
   getSessions,
   getSession,
@@ -9,22 +9,22 @@ const {
   endSession,
   addAttendee,
   getSessionAnalytics,
-} = require('../controllers/sessionController');
+} from "../controllers/sessionController.js";
 
 // Private routes - all require authentication
 router.use(protect);
 
 // Session management
-router.post('/', createSession);
-router.get('/', getSessions);
-router.get('/:id', getSession);
-router.put('/:id/start', startSession);
-router.put('/:id/end', endSession);
+router.post("/", createSession);
+router.get("/", getSessions);
+router.get("/:id", getSession);
+router.put("/:id/start", startSession);
+router.put("/:id/end", endSession);
 
 // Attendee management
-router.post('/:id/attendees', addAttendee);
+router.post("/:id/attendees", addAttendee);
 
 // Analytics
-router.get('/:id/analytics', getSessionAnalytics);
+router.get("/:id/analytics", getSessionAnalytics);
 
-module.exports = router;
+export default router;

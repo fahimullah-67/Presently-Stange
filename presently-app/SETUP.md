@@ -243,14 +243,3 @@ npm install
 6. ⏭️ Add video SDK
 7. ⏭️ Deploy to production
 
-## Resources
-
-- **Vite**: https://vitejs.dev
-- **React**: https://react.dev
-- **React Router**: https://reactrouter.com
-- **Tailwind CSS**: https://tailwindcss.com
-- **Recharts**: https://recharts.org
-
----
-
-**You're all set! Start exploring the app and building your backend!**

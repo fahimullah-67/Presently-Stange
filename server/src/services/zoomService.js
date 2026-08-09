@@ -1,55 +1,74 @@
-const axios = require('axios');
-const jwt = require('jsonwebtoken');
-const redis = require('../config/redis');
+import axios from "axios";
+import jwt from "jsonwebtoken";
+
+import redis from "../config/redis.js";
+
+// Zoom Service
 
 class ZoomService {
   constructor() {
+    // Zoom credentials
     this.clientId = process.env.ZOOM_CLIENT_ID;
     this.clientSecret = process.env.ZOOM_CLIENT_SECRET;
     this.accountId = process.env.ZOOM_ACCOUNT_ID;
-    this.baseUrl = 'https://zoom.us/oauth/token';
-    this.apiUrl = 'https://api.zoom.us/v2';
+
+    // Zoom API endpoints
+    this.oauthUrl = "https://zoom.us/oauth/token";
+    this.apiUrl = "https://api.zoom.us/v2";
   }
 
+  // Authentication
+
   /**
-   * Get OAuth access token from Zoom
+   * Get OAuth access token from Zoom.
+   *
+   * Token is cached in Redis for 55 minutes.
    */
   async getAccessToken() {
     try {
-      // Check Redis cache first
-      const cachedToken = await redis.get('zoom_access_token');
+      const cachedToken = await redis.get("zoom_access_token");
+
       if (cachedToken) {
-        console.log('[v0] Using cached Zoom token');
+        console.log("🔐 Using cached Zoom access token");
+
         return cachedToken;
       }
 
-      const auth = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
-      
+      const credentials = Buffer.from(
+        `${this.clientId}:${this.clientSecret}`,
+      ).toString("base64");
+
       const response = await axios.post(
-        this.baseUrl,
-        'grant_type=account_credentials&account_id=' + this.accountId,
+        this.oauthUrl,
+        `grant_type=account_credentials&account_id=${this.accountId}`,
         {
           headers: {
-            Authorization: `Basic ${auth}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
+            Authorization: `Basic ${credentials}`,
+            "Content-Type": "application/x-www-form-urlencoded",
           },
-        }
+        },
       );
 
       const token = response.data.access_token;
-      
-      // Cache token for 55 minutes (expires in 60 minutes)
-      await redis.setex('zoom_access_token', 3300, token);
-      
+
+      // Cache token for 55 minutes
+      await redis.setex("zoom_access_token", 3300, token);
+
       return token;
     } catch (error) {
-      console.error('[v0] Error getting Zoom access token:', error.message);
-      throw new Error('Failed to get Zoom access token');
+      console.error(
+        "❌ Zoom Access Token Error:",
+        error.response?.data || error.message,
+      );
+
+      throw new Error("Failed to get Zoom access token");
     }
   }
 
+  // Meetings
+
   /**
-   * Create a Zoom meeting
+   * Create a Zoom meeting for an authenticated user.
    */
   async createMeeting(userId, meetingDetails) {
     try {
@@ -58,11 +77,16 @@ class ZoomService {
       const response = await axios.post(
         `${this.apiUrl}/users/me/meetings`,
         {
-          topic: meetingDetails.topic || 'Presently Session',
-          type: 2, // Scheduled meeting
+          topic: meetingDetails.topic || "Presently Session",
+
+          type: 2,
+
           start_time: meetingDetails.startTime,
+
           duration: meetingDetails.duration || 60,
-          timezone: 'UTC',
+
+          timezone: "UTC",
+
           settings: {
             host_video: true,
             participant_video: true,
@@ -76,9 +100,9 @@ class ZoomService {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       const meeting = {
@@ -88,44 +112,49 @@ class ZoomService {
         topic: response.data.topic,
         startTime: response.data.start_time,
         duration: response.data.duration,
+
+        // Keep track of authenticated creator
+        userId,
       };
 
-      // Cache meeting info for quick lookup
+      // Cache meeting information for 2 hours
       await redis.setex(
         `zoom_meeting:${response.data.id}`,
-        7200, // 2 hours
-        JSON.stringify(meeting)
+        7200,
+        JSON.stringify(meeting),
       );
 
       return meeting;
     } catch (error) {
-      console.error('[v0] Error creating Zoom meeting:', error.response?.data || error.message);
-      throw new Error('Failed to create Zoom meeting');
+      console.error(
+        "❌ Zoom Create Meeting Error:",
+        error.response?.data || error.message,
+      );
+
+      throw new Error("Failed to create Zoom meeting");
     }
   }
 
   /**
-   * Get meeting info
+   * Get meeting information.
    */
   async getMeetingInfo(meetingId) {
     try {
-      // Check Redis cache first
       const cachedMeeting = await redis.get(`zoom_meeting:${meetingId}`);
+
       if (cachedMeeting) {
-        console.log('[v0] Using cached meeting info');
+        console.log("📦 Using cached Zoom meeting info");
+
         return JSON.parse(cachedMeeting);
       }
 
       const token = await this.getAccessToken();
 
-      const response = await axios.get(
-        `${this.apiUrl}/meetings/${meetingId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(`${this.apiUrl}/meetings/${meetingId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const meeting = {
         meetingId: response.data.id,
@@ -137,22 +166,25 @@ class ZoomService {
         status: response.data.status,
       };
 
-      // Cache for 2 hours
       await redis.setex(
         `zoom_meeting:${meetingId}`,
         7200,
-        JSON.stringify(meeting)
+        JSON.stringify(meeting),
       );
 
       return meeting;
     } catch (error) {
-      console.error('[v0] Error getting Zoom meeting:', error.response?.data || error.message);
-      throw new Error('Failed to get Zoom meeting info');
+      console.error(
+        "❌ Zoom Get Meeting Error:",
+        error.response?.data || error.message,
+      );
+
+      throw new Error("Failed to get Zoom meeting info");
     }
   }
 
   /**
-   * End a Zoom meeting
+   * End a Zoom meeting.
    */
   async endMeeting(meetingId) {
     try {
@@ -160,27 +192,91 @@ class ZoomService {
 
       await axios.put(
         `${this.apiUrl}/meetings/${meetingId}/status`,
-        { action: 'end' },
+        {
+          action: "end",
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
-        }
+        },
       );
 
-      // Remove from cache
       await redis.del(`zoom_meeting:${meetingId}`);
 
-      return { success: true };
+      return {
+        success: true,
+      };
     } catch (error) {
-      console.error('[v0] Error ending Zoom meeting:', error.response?.data || error.message);
-      throw new Error('Failed to end Zoom meeting');
+      console.error(
+        "❌ Zoom End Meeting Error:",
+        error.response?.data || error.message,
+      );
+
+      throw new Error("Failed to end Zoom meeting");
     }
   }
 
   /**
-   * Get meeting participants
+   * Delete a Zoom meeting.
+   */
+  async deleteMeeting(meetingId) {
+    try {
+      const token = await this.getAccessToken();
+
+      await axios.delete(`${this.apiUrl}/meetings/${meetingId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      await redis.del(`zoom_meeting:${meetingId}`);
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error(
+        "❌ Zoom Delete Meeting Error:",
+        error.response?.data || error.message,
+      );
+
+      throw new Error("Failed to delete meeting");
+    }
+  }
+
+  /**
+   * Get meetings for a Zoom user.
+   */
+  async getUserMeetings(userId = "me") {
+    try {
+      const token = await this.getAccessToken();
+
+      const response = await axios.get(
+        `${this.apiUrl}/users/${userId}/meetings`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      return response.data.meetings || [];
+    } catch (error) {
+      console.error(
+        "❌ Zoom List Meetings Error:",
+        error.response?.data || error.message,
+      );
+
+      return [];
+    }
+  }
+
+  // Participants & Recordings
+
+  /**
+   * Get participants from a meeting.
    */
   async getMeetingParticipants(meetingId) {
     try {
@@ -192,18 +288,22 @@ class ZoomService {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       return response.data.participants || [];
     } catch (error) {
-      console.error('[v0] Error getting meeting participants:', error.response?.data || error.message);
+      console.error(
+        "❌ Zoom Participants Error:",
+        error.response?.data || error.message,
+      );
+
       return [];
     }
   }
 
   /**
-   * Get meeting recordings
+   * Get recordings from a meeting.
    */
   async getMeetingRecordings(meetingId) {
     try {
@@ -215,97 +315,57 @@ class ZoomService {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       return response.data.recording_files || [];
     } catch (error) {
-      console.error('[v0] Error getting recordings:', error.response?.data || error.message);
+      console.error(
+        "❌ Zoom Recordings Error:",
+        error.response?.data || error.message,
+      );
+
       return [];
     }
   }
 
+  // Zoom SDK
+
   /**
-   * Generate Zoom SDK signature for client-side
+   * Generate a Zoom SDK signature.
    */
   generateSignature(meetingId, role = 0) {
     try {
-      const iat = Math.floor(Date.now() / 1000);
-      const exp = iat + 60 * 60; // 1 hour
+      const issuedAt = Math.floor(Date.now() / 1000);
+
+      const expiresAt = issuedAt + 60 * 60;
 
       const payload = {
         appKey: this.clientId,
-        exp,
-        iat,
-        tokenExp: iat + 60 * 60,
         role,
         sessionKey: meetingId,
-        userIdentity: `user_${Math.random().toString(36).substr(2, 9)}`,
+
+        iat: issuedAt,
+        exp: expiresAt,
+        tokenExp: expiresAt,
+
+        userIdentity: `user_${Math.random().toString(36).substring(2, 11)}`,
       };
 
-      const signature = jwt.sign(payload, this.clientSecret, {
+      return jwt.sign(payload, this.clientSecret, {
         header: {
-          alg: 'HS256',
-          typ: 'JWT',
+          alg: "HS256",
+          typ: "JWT",
         },
+
         noTimestamp: true,
       });
-
-      return signature;
     } catch (error) {
-      console.error('[v0] Error generating Zoom signature:', error.message);
-      throw new Error('Failed to generate Zoom signature');
-    }
-  }
+      console.error("❌ Zoom Signature Error:", error.message);
 
-  /**
-   * List user's meetings
-   */
-  async getUserMeetings(userId = 'me') {
-    try {
-      const token = await this.getAccessToken();
-
-      const response = await axios.get(
-        `${this.apiUrl}/users/${userId}/meetings`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      return response.data.meetings || [];
-    } catch (error) {
-      console.error('[v0] Error listing user meetings:', error.response?.data || error.message);
-      return [];
-    }
-  }
-
-  /**
-   * Delete a meeting
-   */
-  async deleteMeeting(meetingId) {
-    try {
-      const token = await this.getAccessToken();
-
-      await axios.delete(
-        `${this.apiUrl}/meetings/${meetingId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      // Remove from cache
-      await redis.del(`zoom_meeting:${meetingId}`);
-
-      return { success: true };
-    } catch (error) {
-      console.error('[v0] Error deleting meeting:', error.response?.data || error.message);
-      throw new Error('Failed to delete meeting');
+      throw new Error("Failed to generate Zoom signature");
     }
   }
 }
 
-module.exports = new ZoomService();
+export const zoomService = new ZoomService();

@@ -1,30 +1,30 @@
-const mongoose = require('mongoose');
+mongoose.model("Attendee", attendeeSchema);
 
 const pollSchema = new mongoose.Schema(
   {
     sessionId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Session',
+      ref: "Session",
       required: true,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
     question: {
       type: String,
-      required: [true, 'Please provide a question'],
-      maxlength: [500, 'Question cannot exceed 500 characters'],
+      required: [true, "Please provide a question"],
+      maxlength: [500, "Question cannot exceed 500 characters"],
     },
     description: {
       type: String,
-      maxlength: [1000, 'Description cannot exceed 1000 characters'],
+      maxlength: [1000, "Description cannot exceed 1000 characters"],
     },
     type: {
       type: String,
-      enum: ['yes-no', 'multiple-choice', 'rating', 'text', 'ranking'],
-      default: 'yes-no',
+      enum: ["yes-no", "multiple-choice", "rating", "text", "ranking"],
+      default: "yes-no",
     },
     options: [
       {
@@ -37,7 +37,7 @@ const pollSchema = new mongoose.Schema(
       {
         respondentId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
+          ref: "User",
         },
         respondentName: String,
         selectedOption: mongoose.Schema.Types.ObjectId,
@@ -76,11 +76,11 @@ const pollSchema = new mongoose.Schema(
       mostSelected: String,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Calculate total responses before saving
-pollSchema.pre('save', function (next) {
+pollSchema.pre("save", function (next) {
   this.totalResponses = this.responses.length;
   next();
 });
@@ -97,11 +97,16 @@ pollSchema.statics.getPollResults = async function (pollId) {
     options: poll.options.map((option) => ({
       text: option.text,
       votes: option.votes,
-      percentage: poll.totalResponses > 0 ? ((option.votes / poll.totalResponses) * 100).toFixed(2) : 0,
+      percentage:
+        poll.totalResponses > 0
+          ? ((option.votes / poll.totalResponses) * 100).toFixed(2)
+          : 0,
     })),
   };
 
   return results;
 };
 
-module.exports = mongoose.model('Poll', pollSchema);
+const Poll = mongoose.model("Poll", pollSchema);
+
+export default Poll;

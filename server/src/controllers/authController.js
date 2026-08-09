@@ -1,8 +1,8 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const { cacheSet, cacheGet, cacheDelete } = require('../config/redis');
-const emailService = require('../services/emailService');
-const zoomService = require('../services/zoomService');
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
+import { cacheSet, cacheGet, cacheDelete } from "../config/redis.js";
+import emailService from "../services/emailService.js";
+import zoomService from "../services/zoomService.js";
 
 // Generate JWT Token
 const generateToken = (id, expiresIn = process.env.JWT_EXPIRE) => {
@@ -12,7 +12,7 @@ const generateToken = (id, expiresIn = process.env.JWT_EXPIRE) => {
 // @desc Register user
 // @route POST /api/auth/register
 // @access Public
-exports.register = async (req, res, next) => {
+export const register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
 
@@ -20,7 +20,7 @@ exports.register = async (req, res, next) => {
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields',
+        message: "Please provide all required fields",
       });
     }
 
@@ -29,7 +29,7 @@ exports.register = async (req, res, next) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'Email already registered',
+        message: "Email already registered",
       });
     }
 
@@ -48,15 +48,15 @@ exports.register = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: "User registered successfully",
       token,
       user: user.toJSON(),
     });
   } catch (error) {
-    console.error('[v0] Register Error:', error.message);
+    console.error("[v0] Register Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Registration failed',
+      message: "Registration failed",
       error: error.message,
     });
   }
@@ -65,7 +65,7 @@ exports.register = async (req, res, next) => {
 // @desc Login user
 // @route POST /api/auth/login
 // @access Public
-exports.login = async (req, res, next) => {
+export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
@@ -73,16 +73,16 @@ exports.login = async (req, res, next) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide email and password',
+        message: "Please provide email and password",
       });
     }
 
     // Check for user (including password field)
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials',
+        message: "Invalid credentials",
       });
     }
 
@@ -91,7 +91,7 @@ exports.login = async (req, res, next) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials',
+        message: "Invalid credentials",
       });
     }
 
@@ -107,15 +107,15 @@ exports.login = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Logged in successfully',
+      message: "Logged in successfully",
       token,
       user: user.toJSON(),
     });
   } catch (error) {
-    console.error('[v0] Login Error:', error.message);
+    console.error("[v0] Login Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Login failed',
+      message: "Login failed",
       error: error.message,
     });
   }
@@ -124,20 +124,20 @@ exports.login = async (req, res, next) => {
 // @desc Logout user
 // @route POST /api/auth/logout
 // @access Private
-exports.logout = async (req, res, next) => {
+export const logout = async (req, res, next) => {
   try {
     // Delete user from cache
     await cacheDelete(`user:${req.user._id}`);
 
     res.status(200).json({
       success: true,
-      message: 'Logged out successfully',
+      message: "Logged out successfully",
     });
   } catch (error) {
-    console.error('[v0] Logout Error:', error.message);
+    console.error("[v0] Logout Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Logout failed',
+      message: "Logout failed",
       error: error.message,
     });
   }
@@ -146,7 +146,7 @@ exports.logout = async (req, res, next) => {
 // @desc Get current logged in user
 // @route GET /api/auth/me
 // @access Private
-exports.getCurrentUser = async (req, res, next) => {
+export const getCurrentUser = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
 
@@ -155,10 +155,10 @@ exports.getCurrentUser = async (req, res, next) => {
       user: user.toJSON(),
     });
   } catch (error) {
-    console.error('[v0] Get Current User Error:', error.message);
+    console.error("[v0] Get Current User Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch user',
+      message: "Failed to fetch user",
       error: error.message,
     });
   }
@@ -167,7 +167,7 @@ exports.getCurrentUser = async (req, res, next) => {
 // @desc Update user profile
 // @route PUT /api/auth/profile
 // @access Private
-exports.updateProfile = async (req, res, next) => {
+export const updateProfile = async (req, res, next) => {
   try {
     const { name, avatar, preferences } = req.body;
 
@@ -176,9 +176,11 @@ exports.updateProfile = async (req, res, next) => {
       {
         ...(name && { name }),
         ...(avatar && { avatar }),
-        ...(preferences && { preferences: { ...req.user.preferences, ...preferences } }),
+        ...(preferences && {
+          preferences: { ...req.user.preferences, ...preferences },
+        }),
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     // Update cache
@@ -186,14 +188,14 @@ exports.updateProfile = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Profile updated successfully',
+      message: "Profile updated successfully",
       user: user.toJSON(),
     });
   } catch (error) {
-    console.error('[v0] Update Profile Error:', error.message);
+    console.error("[v0] Update Profile Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to update profile',
+      message: "Failed to update profile",
       error: error.message,
     });
   }
@@ -202,14 +204,14 @@ exports.updateProfile = async (req, res, next) => {
 // @desc Send OTP to email for Gmail login
 // @route POST /api/auth/send-otp
 // @access Public
-exports.sendOTP = async (req, res, next) => {
+export const sendOTP = async (req, res, next) => {
   try {
     const { email, name } = req.body;
 
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: 'Email is required',
+        message: "Email is required",
       });
     }
 
@@ -218,14 +220,14 @@ exports.sendOTP = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'OTP sent to email',
+      message: "OTP sent to email",
       expiresIn: result.expiresIn,
     });
   } catch (error) {
-    console.error('[v0] Send OTP Error:', error.message);
+    console.error("[v0] Send OTP Error:", error.message);
     res.status(400).json({
       success: false,
-      message: error.message || 'Failed to send OTP',
+      message: error.message || "Failed to send OTP",
     });
   }
 };
@@ -233,14 +235,14 @@ exports.sendOTP = async (req, res, next) => {
 // @desc Verify OTP and login/register user
 // @route POST /api/auth/verify-otp
 // @access Public
-exports.verifyOTP = async (req, res, next) => {
+export const verifyOTP = async (req, res, next) => {
   try {
     const { email, otp, name } = req.body;
 
     if (!email || !otp) {
       return res.status(400).json({
         success: false,
-        message: 'Email and OTP are required',
+        message: "Email and OTP are required",
       });
     }
 
@@ -250,7 +252,7 @@ exports.verifyOTP = async (req, res, next) => {
     if (!verification.success) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid OTP',
+        message: "Invalid OTP",
       });
     }
 
@@ -260,9 +262,9 @@ exports.verifyOTP = async (req, res, next) => {
     if (!user) {
       // Create new user if doesn't exist (Gmail signup)
       user = await User.create({
-        name: name || email.split('@')[0],
+        name: name || email.split("@")[0],
         email,
-        authMethod: 'gmail',
+        authMethod: "gmail",
         isEmailVerified: true,
       });
 
@@ -283,15 +285,15 @@ exports.verifyOTP = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Email verified successfully',
+      message: "Email verified successfully",
       token,
       user: user.toJSON(),
     });
   } catch (error) {
-    console.error('[v0] Verify OTP Error:', error.message);
+    console.error("[v0] Verify OTP Error:", error.message);
     res.status(400).json({
       success: false,
-      message: error.message || 'OTP verification failed',
+      message: error.message || "OTP verification failed",
     });
   }
 };
@@ -299,14 +301,14 @@ exports.verifyOTP = async (req, res, next) => {
 // @desc Get Zoom signature for SDK
 // @route POST /api/auth/zoom-signature
 // @access Private
-exports.getZoomSignature = async (req, res, next) => {
+export const getZoomSignature = async (req, res, next) => {
   try {
     const { meetingId, role } = req.body;
 
     if (!meetingId) {
       return res.status(400).json({
         success: false,
-        message: 'Meeting ID is required',
+        message: "Meeting ID is required",
       });
     }
 
@@ -319,10 +321,10 @@ exports.getZoomSignature = async (req, res, next) => {
       meetingId,
     });
   } catch (error) {
-    console.error('[v0] Get Zoom Signature Error:', error.message);
+    console.error("[v0] Get Zoom Signature Error:", error.message);
     res.status(500).json({
       success: false,
-      message: 'Failed to generate Zoom signature',
+      message: "Failed to generate Zoom signature",
       error: error.message,
     });
   }

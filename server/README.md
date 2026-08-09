@@ -259,7 +259,7 @@ Caching helpers available:
 
 Usage:
 ```javascript
-const { cacheSet, cacheGet } = require('./config/redis');
+const { cacheSet, cacheGet }   from './config/redis');
 
 // Set cache
 await cacheSet(`user:${userId}`, userData, 3600);

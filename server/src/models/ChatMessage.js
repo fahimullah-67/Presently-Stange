@@ -1,28 +1,28 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const chatMessageSchema = new mongoose.Schema(
   {
     sessionId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Session',
+      ref: "Session",
       required: true,
       index: true,
     },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
     },
     senderName: String,
     senderInitials: String,
     message: {
       type: String,
-      required: [true, 'Message cannot be empty'],
-      maxlength: [5000, 'Message cannot exceed 5000 characters'],
+      required: [true, "Message cannot be empty"],
+      maxlength: [5000, "Message cannot exceed 5000 characters"],
     },
     messageType: {
       type: String,
-      enum: ['text', 'image', 'file', 'system'],
-      default: 'text',
+      enum: ["text", "image", "file", "system"],
+      default: "text",
     },
     isSystemMessage: {
       type: Boolean,
@@ -51,7 +51,7 @@ const chatMessageSchema = new mongoose.Schema(
     mentions: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: "User",
       },
     ],
     attachments: [
@@ -65,7 +65,7 @@ const chatMessageSchema = new mongoose.Schema(
       userAgent: String,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Index for efficient querying
@@ -73,12 +73,15 @@ chatMessageSchema.index({ sessionId: 1, createdAt: -1 });
 chatMessageSchema.index({ senderId: 1 });
 
 // Static method to get recent messages
-chatMessageSchema.statics.getRecentMessages = async function (sessionId, limit = 50) {
+chatMessageSchema.statics.getRecentMessages = async function (
+  sessionId,
+  limit = 50,
+) {
   return await this.find({
     sessionId,
     isDeleted: false,
   })
-    .populate('senderId', 'name email avatar')
+    .populate("senderId", "name email avatar")
     .sort({ createdAt: -1 })
     .limit(limit);
 };
@@ -96,4 +99,6 @@ chatMessageSchema.methods.addReaction = function (emoji, userId) {
   return this.save();
 };
 
-module.exports = mongoose.model('ChatMessage', chatMessageSchema);
+const ChatMessage = mongoose.model("ChatMessage", chatMessageSchema);
+
+export default ChatMessage;

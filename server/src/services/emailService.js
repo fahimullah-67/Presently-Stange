@@ -1,12 +1,12 @@
-const nodemailer = require('nodemailer');
-const redis = require('../config/redis');
+import nodemailer from "nodemailer";
+import redis from "redis";
 
 class EmailService {
   constructor() {
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,
-      secure: process.env.SMTP_SECURE === 'true',
+      secure: process.env.SMTP_SECURE === "true",
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD,
@@ -20,7 +20,7 @@ class EmailService {
   generateOTP(length = 6) {
     return Math.floor(Math.random() * Math.pow(10, length))
       .toString()
-      .padStart(length, '0');
+      .padStart(length, "0");
   }
 
   /**
@@ -38,7 +38,7 @@ class EmailService {
       }
 
       if (attempts > 3) {
-        throw new Error('Too many OTP requests. Please try again later.');
+        throw new Error("Too many OTP requests. Please try again later.");
       }
 
       // Generate OTP
@@ -47,18 +47,22 @@ class EmailService {
       const expiryTime = 900; // 15 minutes
 
       // Store OTP in Redis with expiry
-      await redis.setex(otpKey, expiryTime, JSON.stringify({
-        otp,
-        email,
-        attempts: 0,
-        createdAt: new Date().toISOString(),
-      }));
+      await redis.setex(
+        otpKey,
+        expiryTime,
+        JSON.stringify({
+          otp,
+          email,
+          attempts: 0,
+          createdAt: new Date().toISOString(),
+        }),
+      );
 
       // Send email
       const mailOptions = {
         from: process.env.SMTP_FROM_EMAIL,
         to: email,
-        subject: 'Presently - Email Verification',
+        subject: "Presently - Email Verification",
         html: `
           <!DOCTYPE html>
           <html>
@@ -80,7 +84,7 @@ class EmailService {
                   <h1>Presently</h1>
                 </div>
                 <div class="content">
-                  <p>Hello${userName ? ` ${userName}` : ''},</p>
+                  <p>Hello${userName ? ` ${userName}` : ""},</p>
                   <p>Your one-time verification code is:</p>
                   <div class="otp-box">
                     <div class="otp">${otp}</div>
@@ -101,11 +105,11 @@ class EmailService {
 
       return {
         success: true,
-        message: 'OTP sent to email',
+        message: "OTP sent to email",
         expiresIn: expiryTime,
       };
     } catch (error) {
-      console.error('[v0] Error sending OTP email:', error.message);
+      console.error("[v0] Error sending OTP email:", error.message);
       throw error;
     }
   }
@@ -119,7 +123,7 @@ class EmailService {
       const storedData = await redis.get(otpKey);
 
       if (!storedData) {
-        throw new Error('OTP expired or not found');
+        throw new Error("OTP expired or not found");
       }
 
       const data = JSON.parse(storedData);
@@ -128,13 +132,13 @@ class EmailService {
       if (data.attempts >= 5) {
         // Delete OTP after 5 failed attempts
         await redis.del(otpKey);
-        throw new Error('Too many attempts. Please request a new OTP.');
+        throw new Error("Too many attempts. Please request a new OTP.");
       }
 
       if (data.otp !== otp) {
         data.attempts += 1;
         await redis.setex(otpKey, 900, JSON.stringify(data));
-        throw new Error('Invalid OTP');
+        throw new Error("Invalid OTP");
       }
 
       // OTP is correct, delete it
@@ -148,7 +152,7 @@ class EmailService {
         verifiedAt: new Date().toISOString(),
       };
     } catch (error) {
-      console.error('[v0] Error verifying OTP:', error.message);
+      console.error("[v0] Error verifying OTP:", error.message);
       throw error;
     }
   }
@@ -161,7 +165,7 @@ class EmailService {
       const mailOptions = {
         from: process.env.SMTP_FROM_EMAIL,
         to: email,
-        subject: 'Welcome to Presently',
+        subject: "Welcome to Presently",
         html: `
           <!DOCTYPE html>
           <html>
@@ -205,7 +209,7 @@ class EmailService {
       await this.transporter.sendMail(mailOptions);
       return { success: true };
     } catch (error) {
-      console.error('[v0] Error sending welcome email:', error.message);
+      console.error("[v0] Error sending welcome email:", error.message);
       // Don't throw - welcome email failure shouldn't break signup
       return { success: false, error: error.message };
     }
@@ -221,7 +225,7 @@ class EmailService {
       const mailOptions = {
         from: process.env.SMTP_FROM_EMAIL,
         to: email,
-        subject: 'Presently - Password Reset',
+        subject: "Presently - Password Reset",
         html: `
           <!DOCTYPE html>
           <html>
@@ -247,7 +251,7 @@ class EmailService {
       await this.transporter.sendMail(mailOptions);
       return { success: true };
     } catch (error) {
-      console.error('[v0] Error sending reset email:', error.message);
+      console.error("[v0] Error sending reset email:", error.message);
       throw error;
     }
   }
@@ -285,10 +289,10 @@ class EmailService {
       await this.transporter.sendMail(mailOptions);
       return { success: true };
     } catch (error) {
-      console.error('[v0] Error sending notification email:', error.message);
+      console.error("[v0] Error sending notification email:", error.message);
       return { success: false, error: error.message };
     }
   }
 }
 
-module.exports = new EmailService();
+export default new EmailService();

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const sessionSchema = new mongoose.Schema(
   {
@@ -100,4 +100,6 @@ sessionSchema.methods.addAttendee = function (attendeeData) {
   return this.save();
 };
 
-module.exports = mongoose.model('Session', sessionSchema);
+const Session = mongoose.model('Session', sessionSchema);
+
+export default Session;
