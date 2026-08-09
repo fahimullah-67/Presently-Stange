@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { cacheSet, cacheGet, cacheDelete } from "../config/redis.js";
 import emailService from "../services/emailService.js";
-import zoomService from "../services/zoomService.js";
+import { zoomService } from "../services/zoomService.js";
 
 // Generate JWT Token
 const generateToken = (id, expiresIn = process.env.JWT_EXPIRE) => {

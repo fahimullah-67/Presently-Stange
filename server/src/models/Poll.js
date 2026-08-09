@@ -1,4 +1,4 @@
-mongoose.model("Attendee", attendeeSchema);
+import mongoose from "mongoose";
 
 const pollSchema = new mongoose.Schema(
   {
