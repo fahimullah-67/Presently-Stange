@@ -1,7 +1,7 @@
 import axios from "axios";
 import jwt from "jsonwebtoken";
 
-import redis from "../config/redis.js";
+import { cacheSet, cacheGet, cacheDelete } from "../config/redis.js";
 
 // Zoom Service
 
@@ -26,7 +26,8 @@ class ZoomService {
    */
   async getAccessToken() {
     try {
-      const cachedToken = await redis.get("zoom_access_token");
+      // Check Redis cache first
+      const cachedToken = await cacheGet("zoom_access_token");
 
       if (cachedToken) {
         console.log("🔐 Using cached Zoom access token");
@@ -34,10 +35,12 @@ class ZoomService {
         return cachedToken;
       }
 
+      // Create Basic Authentication credentials
       const credentials = Buffer.from(
         `${this.clientId}:${this.clientSecret}`,
       ).toString("base64");
 
+      // Request access token from Zoom
       const response = await axios.post(
         this.oauthUrl,
         `grant_type=account_credentials&account_id=${this.accountId}`,
@@ -52,7 +55,7 @@ class ZoomService {
       const token = response.data.access_token;
 
       // Cache token for 55 minutes
-      await redis.setex("zoom_access_token", 3300, token);
+      await cacheSet("zoom_access_token", token, 3300);
 
       return token;
     } catch (error) {
@@ -113,16 +116,12 @@ class ZoomService {
         startTime: response.data.start_time,
         duration: response.data.duration,
 
-        // Keep track of authenticated creator
+        // Presently authenticated user
         userId,
       };
 
       // Cache meeting information for 2 hours
-      await redis.setex(
-        `zoom_meeting:${response.data.id}`,
-        7200,
-        JSON.stringify(meeting),
-      );
+      await cacheSet(`zoom_meeting:${response.data.id}`, meeting, 7200);
 
       return meeting;
     } catch (error) {
@@ -140,12 +139,13 @@ class ZoomService {
    */
   async getMeetingInfo(meetingId) {
     try {
-      const cachedMeeting = await redis.get(`zoom_meeting:${meetingId}`);
+      // Check Redis cache first
+      const cachedMeeting = await cacheGet(`zoom_meeting:${meetingId}`);
 
       if (cachedMeeting) {
         console.log("📦 Using cached Zoom meeting info");
 
-        return JSON.parse(cachedMeeting);
+        return cachedMeeting;
       }
 
       const token = await this.getAccessToken();
@@ -166,11 +166,8 @@ class ZoomService {
         status: response.data.status,
       };
 
-      await redis.setex(
-        `zoom_meeting:${meetingId}`,
-        7200,
-        JSON.stringify(meeting),
-      );
+      // Cache meeting information for 2 hours
+      await cacheSet(`zoom_meeting:${meetingId}`, meeting, 7200);
 
       return meeting;
     } catch (error) {
@@ -203,7 +200,8 @@ class ZoomService {
         },
       );
 
-      await redis.del(`zoom_meeting:${meetingId}`);
+      // Remove meeting from cache
+      await cacheDelete(`zoom_meeting:${meetingId}`);
 
       return {
         success: true,
@@ -231,7 +229,8 @@ class ZoomService {
         },
       });
 
-      await redis.del(`zoom_meeting:${meetingId}`);
+      // Remove meeting from cache
+      await cacheDelete(`zoom_meeting:${meetingId}`);
 
       return {
         success: true,
@@ -276,7 +275,7 @@ class ZoomService {
   // Participants & Recordings
 
   /**
-   * Get participants from a meeting.
+   * Get participants from a Zoom meeting.
    */
   async getMeetingParticipants(meetingId) {
     try {
@@ -303,7 +302,7 @@ class ZoomService {
   }
 
   /**
-   * Get recordings from a meeting.
+   * Get recordings from a Zoom meeting.
    */
   async getMeetingRecordings(meetingId) {
     try {
@@ -342,17 +341,21 @@ class ZoomService {
 
       const payload = {
         appKey: this.clientId,
+
         role,
+
         sessionKey: meetingId,
 
         iat: issuedAt,
+
         exp: expiresAt,
+
         tokenExp: expiresAt,
 
         userIdentity: `user_${Math.random().toString(36).substring(2, 11)}`,
       };
 
-      return jwt.sign(payload, this.clientSecret, {
+      const signature = jwt.sign(payload, this.clientSecret, {
         header: {
           alg: "HS256",
           typ: "JWT",
@@ -360,6 +363,8 @@ class ZoomService {
 
         noTimestamp: true,
       });
+
+      return signature;
     } catch (error) {
       console.error("❌ Zoom Signature Error:", error.message);
 
@@ -368,4 +373,7 @@ class ZoomService {
   }
 }
 
+// Export Singleton
+
 export const zoomService = new ZoomService();
+
