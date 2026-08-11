@@ -2,12 +2,13 @@ import Session from "../models/Session.js";
 import Attendee from "../models/Attendee.js";
 import { cacheSet, cacheGet, cacheDelete } from "../config/redis.js";
 
-// @desc Create session
-// @route POST /api/sessions
-// @access Private
+
 export const createSession = async (req, res, next) => {
   try {
     const { title, description, startTime, maxAttendees, settings } = req.body;
+
+    console.log("title", title);
+    
 
     const session = await Session.create({
       title,
@@ -17,6 +18,8 @@ export const createSession = async (req, res, next) => {
       settings: { ...settings },
       organizerId: req.user._id,
     });
+    console.log("session", session);
+    
 
     // Cache session
     await cacheSet(`session:${session._id}`, session.toObject(), 7200);
@@ -27,7 +30,7 @@ export const createSession = async (req, res, next) => {
       session,
     });
   } catch (error) {
-    console.error("[v0] Create Session Error:", error.message);
+    console.error("Create Session Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to create session",
@@ -36,9 +39,8 @@ export const createSession = async (req, res, next) => {
   }
 };
 
-// @desc Get all sessions
-// @route GET /api/sessions
-// @access Private
+
+
 export const getSessions = async (req, res, next) => {
   try {
     const sessions = await Session.find({ organizerId: req.user._id })
@@ -50,7 +52,7 @@ export const getSessions = async (req, res, next) => {
       sessions,
     });
   } catch (error) {
-    console.error("[v0] Get Sessions Error:", error.message);
+    console.error("Get Sessions Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to fetch sessions",
@@ -59,9 +61,8 @@ export const getSessions = async (req, res, next) => {
   }
 };
 
-// @desc Get single session
-// @route GET /api/sessions/:id
-// @access Private
+
+
 export const getSession = async (req, res, next) => {
   try {
     const sessionId = req.params.id;
@@ -91,7 +92,7 @@ export const getSession = async (req, res, next) => {
       session,
     });
   } catch (error) {
-    console.error("[v0] Get Session Error:", error.message);
+    console.error("Get Session Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to fetch session",
@@ -100,9 +101,7 @@ export const getSession = async (req, res, next) => {
   }
 };
 
-// @desc Start session
-// @route PUT /api/sessions/:id/start
-// @access Private
+
 export const startSession = async (req, res, next) => {
   try {
     const session = await Session.findById(req.params.id);
@@ -134,7 +133,7 @@ export const startSession = async (req, res, next) => {
       session,
     });
   } catch (error) {
-    console.error("[v0] Start Session Error:", error.message);
+    console.error("Start Session Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to start session",
@@ -143,9 +142,8 @@ export const startSession = async (req, res, next) => {
   }
 };
 
-// @desc End session
-// @route PUT /api/sessions/:id/end
-// @access Private
+
+
 export const endSession = async (req, res, next) => {
   try {
     const session = await Session.findById(req.params.id);
@@ -186,9 +184,8 @@ export const endSession = async (req, res, next) => {
   }
 };
 
-// @desc Add attendee to session
-// @route POST /api/sessions/:id/attendees
-// @access Private
+
+
 export const addAttendee = async (req, res, next) => {
   try {
     const { name, email, role } = req.body;
@@ -229,7 +226,7 @@ export const addAttendee = async (req, res, next) => {
       attendee,
     });
   } catch (error) {
-    console.error("[v0] Add Attendee Error:", error.message);
+    console.error("Add Attendee Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to add attendee",
@@ -238,9 +235,7 @@ export const addAttendee = async (req, res, next) => {
   }
 };
 
-// @desc Get session analytics
-// @route GET /api/sessions/:id/analytics
-// @access Private
+
 export const getSessionAnalytics = async (req, res, next) => {
   try {
     const session = await Session.findById(req.params.id);
@@ -275,7 +270,7 @@ export const getSessionAnalytics = async (req, res, next) => {
       analytics,
     });
   } catch (error) {
-    console.error("[v0] Get Analytics Error:", error.message);
+    console.error("Get Analytics Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to fetch analytics",
