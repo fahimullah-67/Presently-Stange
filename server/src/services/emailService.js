@@ -1,5 +1,11 @@
 import nodemailer from "nodemailer";
-import redis from "redis";
+import {
+  cacheSet,
+  cacheGet,
+  cacheIncr,
+  cacheExpire,
+  cacheDelete,
+} from "../config/redis.js";
 
 class EmailService {
   constructor() {
@@ -30,11 +36,11 @@ class EmailService {
     try {
       // Check rate limiting - max 3 OTPs per hour per email
       const rateLimitKey = `otp_rate_limit:${email}`;
-      const attempts = await redis.incr(rateLimitKey);
+      const attempts = await cacheIncr(rateLimitKey);
 
       if (attempts === 1) {
         // Set expiry only on first attempt
-        await redis.expire(rateLimitKey, 3600); // 1 hour
+        await cacheExpire(rateLimitKey, 3600); // 1 hour
       }
 
       if (attempts > 3) {
@@ -47,15 +53,15 @@ class EmailService {
       const expiryTime = 900; // 15 minutes
 
       // Store OTP in Redis with expiry
-      await redis.setex(
+      await cacheSet(
         otpKey,
-        expiryTime,
-        JSON.stringify({
+        {
           otp,
           email,
           attempts: 0,
           createdAt: new Date().toISOString(),
-        }),
+        },
+        expiryTime,
       );
 
       // Send email
@@ -109,42 +115,40 @@ class EmailService {
         expiresIn: expiryTime,
       };
     } catch (error) {
-      console.error("[v0] Error sending OTP email:", error.message);
+      console.error("Error sending OTP email:", error.message);
       throw error;
     }
   }
 
-  /**
-   * Verify OTP
-   */
+  // Verify OTP
   async verifyOTP(email, otp) {
     try {
       const otpKey = `otp:${email}`;
-      const storedData = await redis.get(otpKey);
 
-      if (!storedData) {
+      const data = await cacheGet(otpKey);
+
+      if (!data) {
         throw new Error("OTP expired or not found");
       }
 
-      const data = JSON.parse(storedData);
-
       // Check attempt limit - max 5 attempts
       if (data.attempts >= 5) {
-        // Delete OTP after 5 failed attempts
-        await redis.del(otpKey);
+        await cacheDelete(otpKey);
         throw new Error("Too many attempts. Please request a new OTP.");
       }
 
       if (data.otp !== otp) {
         data.attempts += 1;
-        await redis.setex(otpKey, 900, JSON.stringify(data));
+
+        await cacheSet(otpKey, data, 900);
         throw new Error("Invalid OTP");
       }
 
       // OTP is correct, delete it
-      await redis.del(otpKey);
-      // Also delete rate limit key to allow new requests
-      await redis.del(`otp_rate_limit:${email}`);
+      await cacheDelete(otpKey);
+
+      // Reset rate limit
+      await cacheDelete(`otp_rate_limit:${email}`);
 
       return {
         success: true,
@@ -152,7 +156,7 @@ class EmailService {
         verifiedAt: new Date().toISOString(),
       };
     } catch (error) {
-      console.error("[v0] Error verifying OTP:", error.message);
+      console.error("Error verifying OTP:", error.message);
       throw error;
     }
   }
