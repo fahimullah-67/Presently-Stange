@@ -113,6 +113,30 @@ const cacheClear = async () => {
   }
 };
 
+// Increment a Redis value
+const cacheIncr = async (key) => {
+  try {
+    const client = getRedisClient();
+
+    return await client.incr(key);
+  } catch (error) {
+    console.error("Redis Increment Error:", error.message);
+    throw error;
+  }
+};
+
+// Set expiration for a Redis key
+const cacheExpire = async (key, seconds) => {
+  try {
+    const client = getRedisClient();
+
+    await client.expire(key, seconds);
+  } catch (error) {
+    console.error("Redis Expire Error:", error.message);
+    throw error;
+  }
+};
+
 export {
   initRedis,
   getRedisClient,
@@ -121,4 +145,6 @@ export {
   cacheGet,
   cacheDelete,
   cacheClear,
+  cacheIncr,
+  cacheExpire,
 };
