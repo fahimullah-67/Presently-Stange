@@ -3,9 +3,8 @@ import Session from "../models/Session.js";
 import Attendee from "../models/Attendee.js";
 import mongoose from "mongoose";
 
-// @desc Create poll
-// @route POST /api/polls
-// @access Private
+
+
 export const createPoll = async (req, res, next) => {
   try {
     const {
@@ -20,6 +19,7 @@ export const createPoll = async (req, res, next) => {
 
     // Validate session exists
     const session = await Session.findById(sessionId);
+
     if (!session) {
       return res.status(404).json({
         success: false,
@@ -56,7 +56,7 @@ export const createPoll = async (req, res, next) => {
       poll,
     });
   } catch (error) {
-    console.error("[v0] Create Poll Error:", error.message);
+    console.error("Create Poll Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to create poll",
