@@ -4,45 +4,42 @@ import User from "../models/User.js";
 // Protect routes - verify JWT token
 export const protect = async (req, res, next) => {
   try {
-    let token;
+    const authHeader = req.headers.authorization;
 
-    // Check for token in headers
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    }
+    // console.log("Authorization Header:", authHeader);
 
-    // Make sure token exists
-    if (!token) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-        message: "Not authorized to access this route",
+        message: "Authorization header missing",
       });
     }
 
-    // Verify token
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id);
+    const token = authHeader.split(" ")[1];
 
-      if (!req.user) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
-      }
+    // console.log("Token received:", token);
 
-      next();
-    } catch (error) {
-      return res.status(401).json({
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    console.log("Decoded Token:", decoded);
+
+    req.user = await User.findById(decoded.id);
+
+    if (!req.user) {
+      return res.status(404).json({
         success: false,
-        message: "Not authorized to access this route",
+        message: "User not found",
       });
     }
+
+    next();
   } catch (error) {
-    console.error("[v0] Auth Middleware Error:", error.message);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Auth Error:", error.message);
+
+    return res.status(401).json({
+      success: false,
+      message: "Not authorized to access this route",
+    });
   }
 };
 
