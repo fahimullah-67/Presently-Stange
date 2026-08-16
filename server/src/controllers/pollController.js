@@ -65,9 +65,8 @@ export const createPoll = async (req, res, next) => {
   }
 };
 
-// @desc Get polls for session
-// @route GET /api/sessions/:sessionId/polls
-// @access Private
+
+
 export const getSessionPolls = async (req, res, next) => {
   try {
     const { sessionId } = req.params;
@@ -81,7 +80,7 @@ export const getSessionPolls = async (req, res, next) => {
       polls,
     });
   } catch (error) {
-    console.error("[v0] Get Session Polls Error:", error.message);
+    console.error("Get Session Polls Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to fetch polls",
@@ -90,9 +89,8 @@ export const getSessionPolls = async (req, res, next) => {
   }
 };
 
-// @desc Get single poll with results
-// @route GET /api/polls/:id
-// @access Private
+
+
 export const getPoll = async (req, res, next) => {
   try {
     const poll = await Poll.findById(req.params.id).populate(
@@ -115,7 +113,7 @@ export const getPoll = async (req, res, next) => {
       results,
     });
   } catch (error) {
-    console.error("[v0] Get Poll Error:", error.message);
+    console.error("Get Poll Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to fetch poll",
@@ -124,9 +122,8 @@ export const getPoll = async (req, res, next) => {
   }
 };
 
-// @desc Add response to poll
-// @route POST /api/polls/:id/respond
-// @access Private
+
+
 export const respondToPoll = async (req, res, next) => {
   try {
     const { selectedOption, textResponse } = req.body;
@@ -167,9 +164,15 @@ export const respondToPoll = async (req, res, next) => {
       const option = poll.options.find(
         (o) => o._id.toString() === selectedOption.toString(),
       );
-      if (option) {
-        option.votes += 1;
+
+      if (!option) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid poll option",
+        });
       }
+
+      option.votes += 1;
     }
 
     await poll.save();
@@ -190,7 +193,7 @@ export const respondToPoll = async (req, res, next) => {
       poll,
     });
   } catch (error) {
-    console.error("[v0] Respond to Poll Error:", error.message);
+    console.error("Respond to Poll Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to record response",
@@ -199,9 +202,8 @@ export const respondToPoll = async (req, res, next) => {
   }
 };
 
-// @desc End poll
-// @route PUT /api/polls/:id/end
-// @access Private
+
+
 export const endPoll = async (req, res, next) => {
   try {
     const poll = await Poll.findById(req.params.id);
@@ -210,6 +212,13 @@ export const endPoll = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: "Poll not found",
+      });
+    }
+
+    if (!poll.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Poll is already ended",
       });
     }
 
@@ -223,22 +232,46 @@ export const endPoll = async (req, res, next) => {
     poll.isActive = false;
     poll.endTime = new Date();
 
-    // Calculate analytics
+    const session = await Session.findById(poll.sessionId);
+
+    if (session) {
+      const totalAttendees = session.attendees.length;
+      const totalResponses = poll.responses.length;
+
+      poll.analytics.responseRate =
+        totalAttendees > 0
+          ? Number(((totalResponses / totalAttendees) * 100).toFixed(2))
+          : 0;
+    }
+
+    // Rating Analytics
+
     if (poll.type === "rating") {
       const ratings = poll.responses
-        .filter((r) => r.selectedOption)
-        .map((r) => parseInt(r.selectedOption));
+        .filter((response) => response.selectedOption)
+        .map((response) => Number(response.selectedOption))
+        .filter((rating) => !Number.isNaN(rating));
+
       if (ratings.length > 0) {
-        poll.analytics.averageRating = (
-          ratings.reduce((a, b) => a + b, 0) / ratings.length
-        ).toFixed(2);
+        poll.analytics.averageRating = Number(
+          (
+            ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
+          ).toFixed(2),
+        );
       }
     }
 
-    poll.analytics.responseRate = (
-      (poll.totalResponses / poll.responses.length) *
-      100
-    ).toFixed(2);
+    if (poll.options.length > 0) {
+      const mostSelectedOption = poll.options.reduce((highest, option) => {
+        return option.votes > highest.votes ? option : highest;
+      });
+
+      if (mostSelectedOption.votes > 0) {
+        poll.analytics.mostSelected = mostSelectedOption.text;
+      }
+    }
+
+    await poll.save();
 
     await poll.save();
 
@@ -248,7 +281,7 @@ export const endPoll = async (req, res, next) => {
       poll,
     });
   } catch (error) {
-    console.error("[v0] End Poll Error:", error.message);
+    console.error("End Poll Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to end poll",
@@ -257,9 +290,8 @@ export const endPoll = async (req, res, next) => {
   }
 };
 
-// @desc Delete poll
-// @route DELETE /api/polls/:id
-// @access Private
+
+
 export const deletePoll = async (req, res, next) => {
   try {
     const poll = await Poll.findById(req.params.id);
@@ -290,7 +322,7 @@ export const deletePoll = async (req, res, next) => {
       message: "Poll deleted successfully",
     });
   } catch (error) {
-    console.error("[v0] Delete Poll Error:", error.message);
+    console.error("Delete Poll Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to delete poll",
