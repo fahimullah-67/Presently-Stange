@@ -2,15 +2,12 @@ import ChatMessage from "../models/ChatMessage.js";
 import Session from "../models/Session.js";
 import Attendee from "../models/Attendee.js";
 
-// @desc Send message
-// @route POST /api/sessions/:sessionId/messages
-// @access Private
+
 export const sendMessage = async (req, res, next) => {
   try {
     const { sessionId } = req.params;
     const { message, messageType, attachments, mentions } = req.body;
 
-    // Validate session exists
     const session = await Session.findById(sessionId);
     if (!session) {
       return res.status(404).json({
@@ -34,12 +31,12 @@ export const sendMessage = async (req, res, next) => {
       },
     });
 
-    // Update session message count
+    
     session.analytics.totalMessages =
       (session.analytics.totalMessages || 0) + 1;
     await session.save();
 
-    // Update attendee engagement
+    
     const attendee = await Attendee.findOne({
       sessionId,
       userId: req.user._id,
@@ -58,7 +55,7 @@ export const sendMessage = async (req, res, next) => {
       data: chatMessage,
     });
   } catch (error) {
-    console.error("[v0] Send Message Error:", error.message);
+    console.error("Send Message Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to send message",
@@ -67,9 +64,7 @@ export const sendMessage = async (req, res, next) => {
   }
 };
 
-// @desc Get session messages
-// @route GET /api/sessions/:sessionId/messages
-// @access Private
+
 export const getMessages = async (req, res, next) => {
   try {
     const { sessionId } = req.params;
@@ -100,7 +95,7 @@ export const getMessages = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error("[v0] Get Messages Error:", error.message);
+    console.error("Get Messages Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to fetch messages",
@@ -109,9 +104,8 @@ export const getMessages = async (req, res, next) => {
   }
 };
 
-// @desc Update message
-// @route PUT /api/messages/:id
-// @access Private
+
+
 export const updateMessage = async (req, res, next) => {
   try {
     const { message } = req.body;
@@ -143,7 +137,7 @@ export const updateMessage = async (req, res, next) => {
       data: chatMessage,
     });
   } catch (error) {
-    console.error("[v0] Update Message Error:", error.message);
+    console.error("Update Message Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to update message",
@@ -152,9 +146,8 @@ export const updateMessage = async (req, res, next) => {
   }
 };
 
-// @desc Delete message
-// @route DELETE /api/messages/:id
-// @access Private
+
+
 export const deleteMessage = async (req, res, next) => {
   try {
     const chatMessage = await ChatMessage.findById(req.params.id);
@@ -191,9 +184,9 @@ export const deleteMessage = async (req, res, next) => {
   }
 };
 
-// @desc Add reaction to message
-// @route POST /api/messages/:id/react
-// @access Private
+
+
+
 export const addReaction = async (req, res, next) => {
   try {
     const { emoji } = req.body;
@@ -225,7 +218,7 @@ export const addReaction = async (req, res, next) => {
       data: chatMessage,
     });
   } catch (error) {
-    console.error("[v0] Add Reaction Error:", error.message);
+    console.error("Add Reaction Error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to add reaction",
@@ -234,9 +227,9 @@ export const addReaction = async (req, res, next) => {
   }
 };
 
-// @desc Pin message
-// @route PUT /api/messages/:id/pin
-// @access Private
+
+
+
 export const pinMessage = async (req, res, next) => {
   try {
     const chatMessage = await ChatMessage.findById(req.params.id);
@@ -248,16 +241,39 @@ export const pinMessage = async (req, res, next) => {
       });
     }
 
+    // Get the session
+    const session = await Session.findById(chatMessage.sessionId);
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: "Session not found",
+      });
+    }
+
+    // Only session organizer can pin/unpin
+    if (session.organizerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the session organizer can pin or unpin messages",
+      });
+    }
+
+    // Toggle pin
     chatMessage.isPinned = !chatMessage.isPinned;
+
     await chatMessage.save();
 
     res.status(200).json({
       success: true,
-      message: "Message pinned/unpinned successfully",
+      message: chatMessage.isPinned
+        ? "Message pinned successfully"
+        : "Message unpinned successfully",
       data: chatMessage,
     });
   } catch (error) {
-    console.error("[v0] Pin Message Error:", error.message);
+    console.error("Pin Message Error:", error.message);
+
     res.status(500).json({
       success: false,
       message: "Failed to pin message",

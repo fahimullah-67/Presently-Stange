@@ -56,8 +56,14 @@ const chatMessageSchema = new mongoose.Schema(
     ],
     attachments: [
       {
-        type: String,
-        url: String,
+        type: {
+          type: String,
+          enum: ["image", "file"],
+        },
+        url: {
+          type: String,
+          required: true,
+        },
       },
     ],
     metadata: {
